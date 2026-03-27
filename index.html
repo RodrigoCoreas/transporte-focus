@@ -415,8 +415,9 @@ const MSAL_CONFIG = {
   },
   cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
 };
-const SCOPES = ['Files.ReadWrite', 'User.Read'];
-const FILE_PATH = '/me/drive/root:/TransporteFocus/datos.json:/content';
+const SCOPES = ['Files.ReadWrite.All', 'User.Read'];
+const DRIVE_ID = 'b!AwX9sKYaGUahQqYKUARfRUFuAXrKPaFJuNyu38aB_Sv8KME_L52UTKV75q4ZRk';
+const FILE_PATH = `/drives/${DRIVE_ID}/root:/TransporteFocus/datos.json:/content`;
 
 const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
 
