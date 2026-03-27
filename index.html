@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transporte Focus El Salvador</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --navy:#0d1b2a;--navy2:#1b2e42;--navy3:#243b55;
+  --teal:#00c9a7;--teal2:#00a88d;--teal3:#e0faf5;
+  --red:#ff5a5f;--red2:#ffe0e1;
+  --green:#27ae60;--green2:#d5f5e3;
+  --gold:#f4c542;
+  --gray1:#f4f6f8;--gray2:#e8ecf0;--gray3:#b0bec5;--gray4:#607d8b;
+  --white:#ffffff;--text:#1a2332;--text2:#4a5568;
+  --shadow:0 2px 12px rgba(0,0,0,0.08);
+  --shadow2:0 4px 24px rgba(0,0,0,0.12);
+  --radius:10px;--radius2:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--gray1);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--navy);display:flex;flex-direction:column;z-index:100;}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--navy3);}
+.sidebar-logo h1{font-size:13px;font-weight:600;color:var(--teal);letter-spacing:0.5px;text-transform:uppercase;}
+.sidebar-logo p{font-size:11px;color:var(--gray3);margin-top:3px;}
+.nav{flex:1;padding:16px 12px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius2);cursor:pointer;color:var(--gray3);font-size:13px;font-weight:400;transition:all 0.15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:var(--navy3);color:var(--white);}
+.nav-item.active{background:var(--teal);color:var(--navy);font-weight:600;}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;}
+.sidebar-bottom{padding:16px 12px;border-top:1px solid var(--navy3);}
+.week-indicator{background:var(--navy2);border-radius:var(--radius2);padding:10px 12px;}
+.week-indicator label{font-size:10px;color:var(--gray3);text-transform:uppercase;letter-spacing:0.5px;}
+.week-indicator .week-val{font-size:11px;color:var(--white);font-weight:500;margin-top:2px;font-family:'DM Mono',monospace;}
+
+/* SYNC STATUS */
+.sync-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:8px 0 0;border-radius:var(--radius2);font-size:11px;}
+.sync-bar.synced{background:rgba(0,201,167,0.15);color:var(--teal);}
+.sync-bar.syncing{background:rgba(244,197,66,0.15);color:#c49a00;}
+.sync-bar.offline{background:rgba(255,90,95,0.15);color:var(--red);}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.synced .sync-dot{background:var(--teal);}
+.syncing .sync-dot{background:#f4c542;animation:pulse 1s infinite;}
+.offline .sync-dot{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* USER BADGE */
+.user-badge{display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:8px;}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--navy);flex-shrink:0;}
+.user-name{font-size:11px;color:var(--gray3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* MAIN */
+.main{margin-left:220px;padding:28px 32px;min-height:100vh;}
+.page{display:none;}
+.page.active{display:block;}
+.page-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:24px;}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:20px;}
+#login-screen h1{font-size:24px;font-weight:600;color:var(--white);}
+#login-screen p{font-size:14px;color:var(--gray3);text-align:center;max-width:320px;}
+.btn-login{background:var(--teal);color:var(--navy);border:none;padding:14px 32px;border-radius:var(--radius2);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:'DM Sans',sans-serif;}
+.btn-login:hover{background:var(--teal2);}
+.login-logo{font-size:13px;font-weight:600;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px;}
+.card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.badge{background:var(--teal3);color:var(--teal2);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;}
+.stat-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;}
+.stat-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+.stat-value{font-size:28px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;}
+.stat-sub{font-size:11px;color:var(--text2);margin-top:3px;}
+.stat-card.teal .stat-value{color:var(--teal2);}
+.stat-card.red .stat-value{color:var(--red);}
+.stat-card.gold .stat-value{color:#c49a00;}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-group label{font-size:12px;font-weight:500;color:var(--text2);}
+.form-group input,.form-group select,.form-group textarea{border:1.5px solid var(--gray2);border-radius:var(--radius2);padding:9px 12px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--white);transition:border-color 0.15s;outline:none;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--teal);}
+.form-group input[readonly]{background:var(--gray1);color:var(--text2);}
+.form-group textarea{resize:vertical;min-height:60px;}
+
+/* DIAS */
+.dias-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.dia-btn{width:52px;height:52px;border:1.5px solid var(--gray2);border-radius:var(--radius2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;background:var(--white);font-size:10px;font-weight:500;color:var(--text2);gap:2px;user-select:none;}
+.dia-btn .dia-letter{font-size:14px;font-weight:600;color:var(--text);}
+.dia-btn:hover{border-color:var(--teal);background:var(--teal3);}
+.dia-btn.selected{border-color:var(--teal);background:var(--teal);color:var(--navy);}
+.dia-btn.selected .dia-letter{color:var(--navy);}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius2);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.btn-primary{background:var(--teal);color:var(--navy);}
+.btn-primary:hover{background:var(--teal2);}
+.btn-secondary{background:var(--gray1);color:var(--text2);border:1.5px solid var(--gray2);}
+.btn-secondary:hover{background:var(--gray2);}
+.btn-danger{background:var(--red2);color:var(--red);}
+.btn-danger:hover{background:#ffcdd2;}
+.btn-navy{background:var(--navy);color:var(--white);}
+.btn-navy:hover{background:var(--navy2);}
+.btn-green{background:var(--green2);color:var(--green);}
+.btn-green:hover{background:#a9dfbf;}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.btn-full{width:100%;justify-content:center;}
+.btn svg{width:15px;height:15px;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--gray1);color:var(--text2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:10px 14px;text-align:left;border-bottom:2px solid var(--gray2);}
+td{padding:11px 14px;border-bottom:1px solid var(--gray2);color:var(--text);vertical-align:middle;}
+tr:hover td{background:var(--gray1);}
+tr:last-child td{border-bottom:none;}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
+.tag-teal{background:var(--teal3);color:var(--teal2);}
+.tag-navy{background:#e8edf2;color:var(--navy);}
+.tag-red{background:var(--red2);color:var(--red);}
+.tag-green{background:var(--green2);color:var(--green);}
+
+/* CALENDAR */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-title{font-size:15px;font-weight:600;color:var(--text);}
+.cal-nav{background:none;border:1.5px solid var(--gray2);border-radius:var(--radius2);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.cal-nav:hover{background:var(--gray2);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day-name{text-align:center;font-size:11px;font-weight:600;color:var(--text2);padding:6px 0;}
+.cal-day{text-align:center;padding:7px 4px;border-radius:var(--radius2);cursor:pointer;font-size:13px;transition:all 0.15s;border:1.5px solid transparent;}
+.cal-day:hover{background:var(--teal3);border-color:var(--teal);}
+.cal-day.empty{cursor:default;}
+.cal-day.today{font-weight:700;color:var(--teal2);}
+.cal-day.selected-week{background:var(--teal3);border-color:var(--teal);font-weight:600;color:var(--navy);}
+.cal-day.monday{background:var(--teal);color:var(--navy);font-weight:700;}
+
+/* HEADCOUNT */
+.headcount-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:12px;}
+.hc-cell{text-align:center;padding:10px 6px;border-radius:var(--radius2);border:1.5px solid var(--gray2);}
+.hc-cell .hc-day{font-size:10px;color:var(--text2);margin-bottom:4px;}
+.hc-cell .hc-num{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;}
+.hc-cell.ok{background:var(--green2);border-color:#a9dfbf;}
+.hc-cell.ok .hc-num{color:var(--green);}
+.hc-cell.warn{background:var(--red2);border-color:#ffcdd2;}
+.hc-cell.warn .hc-num{color:var(--red);}
+.hc-cell.zero .hc-num{color:var(--gray3);}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:48px 24px;color:var(--text2);}
+.empty-state svg{width:48px;height:48px;color:var(--gray3);margin-bottom:12px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:var(--white);padding:12px 20px;border-radius:var(--radius2);font-size:13px;font-weight:500;box-shadow:var(--shadow2);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:1000;display:flex;align-items:center;gap:10px;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.success{border-left:4px solid var(--teal);}
+#toast.error{border-left:4px solid var(--red);}
+#toast.info{border-left:4px solid var(--gold);}
+
+.divider{border:none;border-top:1.5px solid var(--gray2);margin:20px 0;}
+
+/* READONLY VIEW (for jefe) */
+.readonly-badge{background:var(--gold);color:#7a5800;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">Transporte Focus</div>
+  <h1>Bienvenido</h1>
+  <p>Inicia sesión con tu cuenta de Microsoft para acceder al sistema compartido</p>
+  <button class="btn-login" onclick="loginMicrosoft()">
+    <svg width="18" height="18" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+    Iniciar sesión con Microsoft
+  </button>
+  <div id="login-error" style="color:#ff5a5f;font-size:12px;display:none;margin-top:8px"></div>
+</div>
+
+<!-- APP -->
+<nav class="sidebar" id="app-sidebar" style="display:none">
+  <div class="sidebar-logo">
+    <h1>Transporte Focus</h1>
+    <p>El Salvador</p>
+  </div>
+  <div class="nav">
+    <button class="nav-item active" onclick="nav('semana')" id="nav-semana">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Esta semana
+    </button>
+    <button class="nav-item" onclick="nav('empleados')" id="nav-empleados">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Agregar empleado
+    </button>
+    <button class="nav-item" onclick="nav('base')" id="nav-base">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Base de empleados
+    </button>
+    <button class="nav-item" onclick="nav('historial')" id="nav-historial">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      Historial
+    </button>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="user-badge" id="user-badge"></div>
+    <div class="week-indicator">
+      <label>Semana activa</label>
+      <div class="week-val" id="sb-week">Sin seleccionar</div>
+    </div>
+    <div class="sync-bar syncing" id="sync-bar">
+      <div class="sync-dot"></div>
+      <span id="sync-label">Conectando...</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="logout()" style="width:100%;margin-top:8px;justify-content:center">Cerrar sesión</button>
+  </div>
+</nav>
+
+<main class="main" id="app-main" style="display:none">
+
+<!-- SEMANA -->
+<div class="page active" id="page-semana">
+  <div class="page-title">Esta semana</div>
+  <div class="page-sub">Resumen compartido — todos los supervisores ven los mismos datos en tiempo real</div>
+  <div class="stats-row">
+    <div class="stat-card teal"><div class="stat-label">Empleados</div><div class="stat-value" id="stat-emp">0</div><div class="stat-sub">registrados esta semana</div></div>
+    <div class="stat-card"><div class="stat-label">Rutas activas</div><div class="stat-value" id="stat-rutas">0</div><div class="stat-sub">con pasajeros</div></div>
+    <div class="stat-card red"><div class="stat-label">Alertas</div><div class="stat-value" id="stat-alertas">0</div><div class="stat-sub">días con headcount &lt;3</div></div>
+    <div class="stat-card gold"><div class="stat-label">Semana</div><div class="stat-value" id="stat-semana" style="font-size:13px;padding-top:8px">—</div><div class="stat-sub">período activo</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Acciones</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="nav('empleados')" id="btn-agregar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Agregar empleado
+      </button>
+      <button class="btn btn-navy" onclick="generarExcel()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar Excel de rutas
+      </button>
+      <button class="btn btn-danger" onclick="limpiarSemana()" id="btn-limpiar">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Limpiar semana
+      </button>
+      <button class="btn btn-secondary" onclick="sincronizar()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Sincronizar
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Empleados registrados <span class="badge" id="badge-emp">0</span></div>
+    <div class="table-wrap">
+      <table id="tabla-semana">
+        <thead><tr><th>#</th><th>Nombre</th><th>Cuenta</th><th>Municipio</th><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th><th>Por</th><th></th></tr></thead>
+        <tbody id="body-semana"></tbody>
+      </table>
+    </div>
+    <div id="empty-semana" class="empty-state">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <p>Sin empleados esta semana</p><small>Usa "Agregar empleado" para comenzar</small>
+    </div>
+  </div>
+  <div class="card" id="card-headcount" style="display:none">
+    <div class="card-title">Headcount por ruta</div>
+    <div id="headcount-container"></div>
+  </div>
+</div>
+
+<!-- AGREGAR EMPLEADO -->
+<div class="page" id="page-empleados">
+  <div class="page-title">Agregar empleado a la semana</div>
+  <div class="page-sub">Los cambios se sincronizan automáticamente con todos los supervisores</div>
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start">
+    <div class="card">
+      <div class="card-title">Semana</div>
+      <div class="cal-header">
+        <button class="cal-nav" onclick="calNav(-1)">&#8592;</button>
+        <span class="cal-title" id="cal-title">—</span>
+        <button class="cal-nav" onclick="calNav(1)">&#8594;</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-day-name">Lun</div><div class="cal-day-name">Mar</div><div class="cal-day-name">Mié</div>
+        <div class="cal-day-name">Jue</div><div class="cal-day-name">Vie</div><div class="cal-day-name">Sáb</div><div class="cal-day-name">Dom</div>
+        <div id="cal-days" style="display:contents"></div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray2)">
+        <div style="font-size:11px;color:var(--text2)">Semana seleccionada:</div>
+        <div style="font-size:12px;font-weight:600;color:var(--teal2);margin-top:3px;font-family:'DM Mono',monospace" id="semana-sel-label">Sin seleccionar</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Datos del empleado</div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="form-group full">
+          <label>Selecciona empleado de la base</label>
+          <select id="sel-empleado" onchange="cargarEmpleado()">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Municipio</label><input type="text" id="f-municipio" readonly></div>
+        <div class="form-group">
+          <label>Hora de salida</label>
+          <select id="f-hora"><option>20:00</option><option>21:00</option><option>22:00</option><option>23:00</option><option>00:00</option></select>
+        </div>
+        <div class="form-group"><label>Cuenta</label><input type="text" id="f-cuenta" readonly></div>
+        <div class="form-group full"><label>Dirección exacta</label><textarea id="f-direccion" readonly rows="2"></textarea></div>
+      </div>
+      <hr class="divider">
+      <div>
+        <label style="font-size:12px;font-weight:500;color:var(--text2)">Días que usa transporte esta semana</label>
+        <div class="dias-grid">
+          <div class="dia-btn" onclick="toggleDia(this,'lun')" data-dia="lun"><span class="dia-letter">L</span><span>Lun</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'mar')" data-dia="mar"><span class="dia-letter">M</span><span>Mar</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'mie')" data-dia="mie"><span class="dia-letter">X</span><span>Mié</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'jue')" data-dia="jue"><span class="dia-letter">J</span><span>Jue</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'vie')" data-dia="vie"><span class="dia-letter">V</span><span>Vie</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'sab')" data-dia="sab"><span class="dia-letter">S</span><span>Sáb</span></div>
+          <div class="dia-btn" onclick="toggleDia(this,'dom')" data-dia="dom"><span class="dia-letter">D</span><span>Dom</span></div>
+        </div>
+      </div>
+      <hr class="divider">
+      <button class="btn btn-primary btn-full" onclick="agregarEmpleado()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M12 5v14M5 12h14"/></svg>
+        Agregar a la semana
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BASE EMPLEADOS -->
+<div class="page" id="page-base">
+  <div class="page-title">Base de empleados</div>
+  <div class="page-sub">Registra cada empleado una sola vez. Compartido entre todos los supervisores.</div>
+  <div class="card">
+    <div class="card-title">Nuevo empleado</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre completo</label><input type="text" id="ne-nombre" placeholder="Ej: María José González López"></div>
+      <div class="form-group">
+        <label>Municipio</label>
+        <select id="ne-municipio">
+          <option value="">— Seleccionar —</option>
+          <option>Apopa</option><option>Colón</option><option>Ilopango</option><option>Mejicanos</option>
+          <option>San Marcos</option><option>San Martín</option><option>San Salvador</option>
+          <option>Santa Tecla</option><option>Soyapango</option><option>Tonacatepeque</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hora habitual</label>
+        <select id="ne-hora"><option>20:00</option><option>21:00</option><option>22:00</option><option>23:00</option><option>00:00</option></select>
+      </div>
+      <div class="form-group">
+        <label>Cuenta</label>
+        <select id="ne-cuenta">
+          <option value="">— Seleccionar —</option>
+          <option>Centerfield</option><option>NextEra</option><option>TravelPass</option><option>Galileo</option>
+          <option>PBB</option><option>Shared Services</option><option>Operational Shared Services</option>
+          <option>Oriental Trading Company</option><option>CHW</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Dirección exacta</label><textarea id="ne-direccion" placeholder="Ej: Col. Las Mercedes, psj. Matazano, casa #14" rows="2"></textarea></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="guardarEmpleado()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar empleado
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Empleados registrados <span class="badge" id="badge-base">0</span></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>#</th><th>Nombre</th><th>Municipio</th><th>Hora</th><th>Cuenta</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="body-base"></tbody></table>
+    </div>
+    <div id="empty-base" class="empty-state">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <p>No hay empleados en la base</p>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORIAL -->
+<div class="page" id="page-historial">
+  <div class="page-title">Historial</div>
+  <div class="page-sub">Registro de todas las semanas. Visible para todos incluyendo el jefe.</div>
+  <div class="card">
+    <div class="card-title">Semanas registradas</div>
+    <div id="historial-container"></div>
+  </div>
+</div>
+
+</main>
+<div id="toast"></div>
+
+<script>
+// ══ CONFIG MICROSOFT ══
+const MSAL_CONFIG = {
+  auth: {
+    clientId: '7da2a589-57b2-46e1-a935-7faa279d3e73',
+    authority: 'https://login.microsoftonline.com/a1d35727-83ba-4969-8016-a32dddcb3d6c',
+    redirectUri: window.location.href.split('?')[0]
+  },
+  cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+};
+const SCOPES = ['Files.ReadWrite', 'User.Read'];
+const FILE_PATH = '/me/drive/root:/TransporteFocus/datos.json:/content';
+
+const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+
+// ══ CONSTANTES ══
+const MUNICIPIO_ZONA = {
+  'Apopa':'Apopa','Colón':'Lourdes','Ilopango':'Soyapango','Mejicanos':'Apopa',
+  'San Marcos':'San Salvador','San Martín':'San Salvador','San Salvador':'San Salvador',
+  'Santa Tecla':'Lourdes','Soyapango':'Soyapango','Tonacatepeque':'Apopa'
+};
+const DIAS = ['lun','mar','mie','jue','vie','sab','dom'];
+const DIAS_LABEL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+// ══ ESTADO ══
+let state = { semanaFecha:null, empleadosSemana:[], baseEmpleados:[], historial:[] };
+let currentUser = null;
+let accessToken = null;
+let userRole = 'supervisor'; // 'supervisor' o 'jefe'
+let syncInterval = null;
+
+// ══ AUTH ══
+async function loginMicrosoft() {
+  try {
+    const result = await msalInstance.loginPopup({ scopes: SCOPES });
+    await initApp(result.account);
+  } catch(e) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-error').textContent = 'Error al iniciar sesión: ' + e.message;
+  }
+}
+
+async function getToken() {
+  const accounts = msalInstance.getAllAccounts();
+  if (!accounts.length) return null;
+  try {
+    const result = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+    return result.accessToken;
+  } catch {
+    const result = await msalInstance.acquireTokenPopup({ scopes: SCOPES });
+    return result.accessToken;
+  }
+}
+
+async function logout() {
+  await msalInstance.logoutPopup();
+  location.reload();
+}
+
+async function initApp(account) {
+  currentUser = account;
+  accessToken = await getToken();
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-sidebar').style.display = 'flex';
+  document.getElementById('app-main').style.display = 'block';
+
+  // User badge
+  const initials = account.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-badge').innerHTML = `
+    <div class="user-avatar">${initials}</div>
+    <span class="user-name">${account.name}</span>`;
+
+  await sincronizar();
+  syncInterval = setInterval(sincronizar, 30000); // sync cada 30 seg
+  initCal();
+  renderSemana();
+  renderBase();
+}
+
+// ══ ONEDRIVE SYNC ══
+async function sincronizar() {
+  setSyncStatus('syncing', 'Sincronizando...');
+  try {
+    accessToken = await getToken();
+    const res = await fetch('https://graph.microsoft.com/v1.0' + FILE_PATH, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    if (res.ok) {
+      const remoto = await res.json();
+      // Merge inteligente: tomar lo más reciente
+      if (!state._lastSync || remoto._lastSync > state._lastSync) {
+        state = remoto;
+        if (state.semanaFecha) state.semanaFecha = new Date(state.semanaFecha);
+      }
+      setSyncStatus('synced', 'Sincronizado · ' + new Date().toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit'}));
+    } else if (res.status === 404) {
+      // Archivo no existe aún, crear
+      await guardarEnOneDrive();
+      setSyncStatus('synced', 'Archivo creado en OneDrive');
+    } else {
+      setSyncStatus('offline', 'Error de conexión');
+    }
+    renderSemana();
+    renderBase();
+    actualizarSidebar();
+    cargarListaEmpleados();
+  } catch(e) {
+    setSyncStatus('offline', 'Sin conexión');
+  }
+}
+
+async function guardarEnOneDrive() {
+  try {
+    accessToken = await getToken();
+    state._lastSync = Date.now();
+    state._lastUser = currentUser?.name || '';
+    await fetch('https://graph.microsoft.com/v1.0' + FILE_PATH, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(state)
+    });
+    setSyncStatus('synced', 'Guardado · ' + new Date().toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncStatus('offline', 'Error al guardar');
+  }
+}
+
+function setSyncStatus(type, msg) {
+  const bar = document.getElementById('sync-bar');
+  bar.className = 'sync-bar ' + type;
+  document.getElementById('sync-label').textContent = msg;
+}
+
+// ══ CALENDARIO ══
+let calMes, calAnio;
+function initCal() {
+  const hoy = new Date();
+  calMes = hoy.getMonth(); calAnio = hoy.getFullYear();
+  renderCalendario();
+}
+function calNav(dir) {
+  calMes += dir;
+  if (calMes < 0){calMes=11;calAnio--;}
+  if (calMes > 11){calMes=0;calAnio++;}
+  renderCalendario();
+}
+function renderCalendario() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('cal-title').textContent = meses[calMes] + ' ' + calAnio;
+  const primer = new Date(calAnio, calMes, 1);
+  const total = new Date(calAnio, calMes+1, 0).getDate();
+  let off = primer.getDay()-1; if(off<0) off=6;
+  const hoy = new Date();
+  const cont = document.getElementById('cal-days');
+  cont.innerHTML = '';
+  for(let i=0;i<off;i++){const d=document.createElement('div');d.className='cal-day empty';cont.appendChild(d);}
+  for(let d=1;d<=total;d++){
+    const fecha=new Date(calAnio,calMes,d);
+    const lunes=getLunes(fecha);
+    let cls='cal-day';
+    if(fecha.toDateString()===hoy.toDateString()) cls+=' today';
+    if(state.semanaFecha&&lunes.toDateString()===new Date(state.semanaFecha).toDateString()){
+      cls+=fecha.getDay()===1?' monday':' selected-week';
+    }
+    const el=document.createElement('div');
+    el.className=cls; el.textContent=d;
+    el.onclick=()=>seleccionarSemana(calAnio,calMes,d);
+    cont.appendChild(el);
+  }
+  actualizarLabelSemana();
+}
+function getLunes(f){
+  const d=new Date(f),dia=d.getDay(),diff=dia===0?-6:1-dia;
+  d.setDate(d.getDate()+diff); d.setHours(0,0,0,0); return d;
+}
+async function seleccionarSemana(a,m,d){
+  state.semanaFecha = getLunes(new Date(a,m,d));
+  await guardarEnOneDrive();
+  renderCalendario(); actualizarSidebar();
+  toast('Semana seleccionada: '+fmtSemana());
+}
+function fmtFecha(f){if(!f)return'—';return new Date(f).toLocaleDateString('es-SV',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function fmtSemana(){
+  if(!state.semanaFecha) return 'Sin seleccionar';
+  const fin=new Date(new Date(state.semanaFecha).getTime()+6*86400000);
+  return fmtFecha(state.semanaFecha)+' — '+fmtFecha(fin);
+}
+function actualizarLabelSemana(){document.getElementById('semana-sel-label').textContent=fmtSemana();}
+function actualizarSidebar(){document.getElementById('sb-week').textContent=fmtSemana();}
+
+// ══ DÍAS ══
+let diasSel={};
+function toggleDia(el,dia){diasSel[dia]=!diasSel[dia];el.classList.toggle('selected',diasSel[dia]);}
+function resetDias(){diasSel={};document.querySelectorAll('.dia-btn').forEach(b=>b.classList.remove('selected'));}
+
+// ══ EMPLEADOS ══
+function cargarListaEmpleados(){
+  const sel=document.getElementById('sel-empleado');
+  sel.innerHTML='<option value="">— Seleccionar —</option>';
+  (state.baseEmpleados||[]).filter(e=>e.estado==='Activo').forEach(e=>{
+    const o=document.createElement('option');o.value=e.id;o.textContent=e.nombre;sel.appendChild(o);
+  });
+}
+function cargarEmpleado(){
+  const id=document.getElementById('sel-empleado').value;
+  const emp=(state.baseEmpleados||[]).find(e=>e.id==id);
+  if(!emp){document.getElementById('f-municipio').value='';document.getElementById('f-cuenta').value='';document.getElementById('f-direccion').value='';return;}
+  document.getElementById('f-municipio').value=emp.municipio;
+  document.getElementById('f-cuenta').value=emp.cuenta;
+  document.getElementById('f-direccion').value=emp.direccion;
+  const sel=document.getElementById('f-hora');
+  for(let i=0;i<sel.options.length;i++){if(sel.options[i].value===emp.hora){sel.selectedIndex=i;break;}}
+}
+async function agregarEmpleado(){
+  if(!state.semanaFecha){toast('Selecciona primero la semana','error');return;}
+  const id=document.getElementById('sel-empleado').value;
+  if(!id){toast('Selecciona un empleado','error');return;}
+  const dias=DIAS.filter(d=>diasSel[d]);
+  if(!dias.length){toast('Marca al menos un día','error');return;}
+  const emp=(state.baseEmpleados||[]).find(e=>e.id==id);
+  const hora=document.getElementById('f-hora').value;
+  const existe=(state.empleadosSemana||[]).findIndex(e=>e.empId==id);
+  if(existe>=0){
+    if(!confirm(emp.nombre+' ya está en la lista. ¿Reemplazar?')) return;
+    state.empleadosSemana.splice(existe,1);
+  }
+  if(!state.empleadosSemana) state.empleadosSemana=[];
+  state.empleadosSemana.push({
+    empId:id,nombre:emp.nombre,municipio:emp.municipio,
+    hora,cuenta:emp.cuenta,direccion:emp.direccion,
+    dias:{...diasSel},agregadoPor:currentUser?.name||''
+  });
+  await guardarEnOneDrive();
+  resetDias();
+  document.getElementById('sel-empleado').value='';
+  cargarEmpleado();
+  toast(emp.nombre+' agregado');
+  renderSemana();
+}
+async function eliminarDeSemana(i){
+  state.empleadosSemana.splice(i,1);
+  await guardarEnOneDrive();
+  renderSemana();
+  toast('Eliminado');
+}
+
+// ══ RENDER SEMANA ══
+function renderSemana(){
+  const body=document.getElementById('body-semana');
+  const empty=document.getElementById('empty-semana');
+  const emp=state.empleadosSemana||[];
+  document.getElementById('stat-emp').textContent=emp.length;
+  document.getElementById('badge-emp').textContent=emp.length;
+  document.getElementById('stat-semana').textContent=state.semanaFecha?
+    fmtFecha(state.semanaFecha).slice(0,5)+'–'+fmtFecha(new Date(new Date(state.semanaFecha).getTime()+6*86400000)).slice(0,5):'—';
+  actualizarSidebar();
+  if(!emp.length){body.innerHTML='';empty.style.display='block';document.getElementById('card-headcount').style.display='none';document.getElementById('stat-rutas').textContent=0;document.getElementById('stat-alertas').textContent=0;return;}
+  empty.style.display='none';
+  body.innerHTML=emp.map((e,i)=>{
+    const dias=DIAS.map(d=>`<td style="text-align:center">${e.dias[d]?'<span style="color:var(--teal2);font-weight:700">✓</span>':'<span style="color:var(--gray3)">—</span>'}</td>`).join('');
+    const canDelete=e.agregadoPor===currentUser?.name||true;
+    return `<tr><td>${i+1}</td><td><b>${e.nombre}</b></td><td><span class="tag tag-navy">${e.cuenta}</span></td><td>${e.municipio}</td><td><span class="tag tag-teal">${e.hora}</span></td>${dias}<td><span style="font-size:11px;color:var(--text2)">${e.agregadoPor||''}</span></td><td>${canDelete?`<button class="btn btn-danger btn-sm" onclick="eliminarDeSemana(${i})">✕</button>`:''}</td></tr>`;
+  }).join('');
+  renderHeadcount();
+}
+function renderHeadcount(){
+  const rutas={};
+  (state.empleadosSemana||[]).forEach(e=>{
+    const zona=MUNICIPIO_ZONA[e.municipio]||e.municipio;
+    const key=zona+'|'+e.hora;
+    if(!rutas[key]) rutas[key]={counts:[0,0,0,0,0,0,0]};
+    DIAS.forEach((d,i)=>{if(e.dias[d])rutas[key].counts[i]++;});
+  });
+  let alertas=0,activas=0,html='';
+  Object.entries(rutas).forEach(([k,data])=>{
+    const [zona,hora]=k.split('|');
+    const c=data.counts;
+    const tieneAlerta=c.some(x=>x>0&&x<3);
+    const tieneEmp=c.some(x=>x>0);
+    if(tieneEmp) activas++;
+    if(tieneAlerta) alertas++;
+    const celdas=c.map((n,i)=>{
+      const cls=n>=3?'hc-cell ok':n>0?'hc-cell warn':'hc-cell zero';
+      return `<div class="${cls}"><div class="hc-day">${['L','M','X','J','V','S','D'][i]}</div><div class="hc-num">${n}</div></div>`;
+    }).join('');
+    html+=`<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">${zona} ${hora.replace(':','')}h ${tieneAlerta?'<span class="tag tag-red">⚠ Headcount bajo</span>':'<span class="tag tag-green">OK</span>'}</div><div class="headcount-grid">${celdas}</div></div>`;
+  });
+  document.getElementById('stat-rutas').textContent=activas;
+  document.getElementById('stat-alertas').textContent=alertas;
+  document.getElementById('headcount-container').innerHTML=html||'<p style="color:var(--text2)">Sin rutas activas</p>';
+  document.getElementById('card-headcount').style.display='block';
+}
+
+// ══ BASE EMPLEADOS ══
+async function guardarEmpleado(){
+  const nombre=document.getElementById('ne-nombre').value.trim();
+  const municipio=document.getElementById('ne-municipio').value;
+  const hora=document.getElementById('ne-hora').value;
+  const cuenta=document.getElementById('ne-cuenta').value;
+  const direccion=document.getElementById('ne-direccion').value.trim();
+  if(!nombre||!municipio||!cuenta||!direccion){toast('Completa todos los campos','error');return;}
+  if(!state.baseEmpleados) state.baseEmpleados=[];
+  state.baseEmpleados.push({id:Date.now(),nombre,municipio,hora,cuenta,direccion,estado:'Activo',creadoPor:currentUser?.name||''});
+  await guardarEnOneDrive();
+  ['ne-nombre','ne-direccion'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('ne-municipio').value='';
+  document.getElementById('ne-cuenta').value='';
+  renderBase();
+  cargarListaEmpleados();
+  toast(nombre+' guardado en la base');
+}
+async function toggleEstado(id){
+  const emp=(state.baseEmpleados||[]).find(e=>e.id==id);
+  if(emp){emp.estado=emp.estado==='Activo'?'Inactivo':'Activo';await guardarEnOneDrive();renderBase();}
+}
+async function eliminarEmpleado(id){
+  if(!confirm('¿Eliminar este empleado?')) return;
+  state.baseEmpleados=(state.baseEmpleados||[]).filter(e=>e.id!=id);
+  await guardarEnOneDrive();renderBase();cargarListaEmpleados();toast('Empleado eliminado');
+}
+function renderBase(){
+  const body=document.getElementById('body-base');
+  const empty=document.getElementById('empty-base');
+  const emp=state.baseEmpleados||[];
+  document.getElementById('badge-base').textContent=emp.length;
+  if(!emp.length){body.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  body.innerHTML=emp.map((e,i)=>`
+    <tr><td>${i+1}</td><td><b>${e.nombre}</b></td><td>${e.municipio}</td><td><span class="tag tag-teal">${e.hora}</span></td><td>${e.cuenta}</td>
+    <td><span class="tag ${e.estado==='Activo'?'tag-green':'tag-red'}">${e.estado}</span></td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn btn-secondary btn-sm" onclick="toggleEstado(${e.id})">${e.estado==='Activo'?'Desactivar':'Activar'}</button>
+      <button class="btn btn-danger btn-sm" onclick="eliminarEmpleado(${e.id})">✕</button>
+    </div></td></tr>`).join('');
+}
+
+// ══ HISTORIAL ══
+async function limpiarSemana(){
+  if(!confirm('¿Limpiar la semana actual?\n\nSe guardará en el historial automáticamente.')) return;
+  if((state.empleadosSemana||[]).length>0){
+    if(!state.historial) state.historial=[];
+    state.historial.unshift({
+      semana:fmtSemana(),fecha:new Date(state.semanaFecha).toISOString(),
+      empleados:[...state.empleadosSemana],
+      totalEmpleados:state.empleadosSemana.length,
+      totalViajes:state.empleadosSemana.reduce((s,e)=>s+DIAS.filter(d=>e.dias[d]).length,0),
+      limpiadoPor:currentUser?.name||''
+    });
+  }
+  state.empleadosSemana=[];
+  state.semanaFecha=null;
+  await guardarEnOneDrive();
+  renderSemana();
+  renderHistorial();
+  toast('Semana limpiada y guardada en historial');
+}
+function renderHistorial(){
+  const cont=document.getElementById('historial-container');
+  const h=state.historial||[];
+  if(!h.length){
+    cont.innerHTML=`<div class="empty-state"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="width:48px;height:48px;color:var(--gray3);margin-bottom:12px"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg><p>Sin historial aún</p><small>Las semanas limpiadas aparecerán aquí</small></div>`;
+    return;
+  }
+  cont.innerHTML=h.map((entry,hi)=>`
+    <div style="border:1.5px solid var(--gray2);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:14px;font-weight:600">${entry.semana}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${entry.totalEmpleados} empleados · ${entry.totalViajes} viajes · por ${entry.limpiadoPor||'—'}</div>
+        </div>
+        <button class="btn btn-green btn-sm" onclick="exportarHistorialExcel(${hi})">Descargar Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Nombre</th><th>Cuenta</th><th>Municipio</th><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th><th>Agregado por</th></tr></thead>
+        <tbody>${(entry.empleados||[]).map(e=>{
+          const dias=DIAS.map(d=>`<td style="text-align:center">${e.dias[d]?'✓':'—'}</td>`).join('');
+          return `<tr><td>${e.nombre}</td><td>${e.cuenta}</td><td>${e.municipio}</td><td>${e.hora}</td>${dias}<td style="font-size:11px;color:var(--text2)">${e.agregadoPor||''}</td></tr>`;
+        }).join('')}</tbody></table>
+      </div>
+    </div>`).join('');
+}
+
+// ══ EXCEL ══
+function generarExcel(){
+  const emp=state.empleadosSemana||[];
+  if(!emp.length){toast('No hay empleados esta semana','error');return;}
+  const wb=XLSX.utils.book_new();
+  const AZUL_H='FF1F4E79',AZUL_M='FF2E75B6',AZUL_C='FFD6E4F0',BLANCO='FFFFFFFF',GRIS='FFF2F2F2',NEGRO_OFF='FF2C2C2A';
+  const rutas={};
+  emp.forEach(e=>{
+    const zona=MUNICIPIO_ZONA[e.municipio]||e.municipio;
+    const key=zona+'|'+e.hora;
+    if(!rutas[key]) rutas[key]=[];
+    rutas[key].push(e);
+  });
+  const semStr=state.semanaFecha?fmtFecha(state.semanaFecha)+' al '+fmtFecha(new Date(new Date(state.semanaFecha).getTime()+6*86400000)):'';
+  Object.entries(rutas).forEach(([key,empleados])=>{
+    const [zona,hora]=key.split('|');
+    const sn=(zona+' '+hora.replace(':','')).slice(0,31);
+    const ws={};
+    const setCel=(r,c,v,s={})=>{
+      const a=XLSX.utils.encode_cell({r,c});
+      ws[a]={v,t:typeof v==='number'?'n':'s'};
+      if(Object.keys(s).length){
+        ws[a].s={};
+        if(s.bold||s.color||s.sz) ws[a].s.font={bold:!!s.bold,color:{rgb:s.color||'FF000000'},sz:s.sz||10,name:'Arial'};
+        if(s.bg) ws[a].s.fill={fgColor:{rgb:s.bg},type:'solid',patternType:'solid'};
+        if(s.align) ws[a].s.alignment={horizontal:s.align,vertical:'center',wrapText:!!s.wrap};
+        if(s.border) ws[a].s.border={top:{style:'thin',color:{rgb:'FFBFBFBF'}},bottom:{style:'thin',color:{rgb:'FFBFBFBF'}},left:{style:'thin',color:{rgb:'FFBFBFBF'}},right:{style:'thin',color:{rgb:'FFBFBFBF'}}};
+      }
+    };
+    const merge=(r1,c1,r2,c2)=>{if(!ws['!merges'])ws['!merges']=[];ws['!merges'].push({s:{r:r1,c:c1},e:{r:r2,c:c2}});};
+    setCel(0,0,'TRANSPORTE FOCUS EL SALVADOR',{bold:true,bg:AZUL_H,color:BLANCO,align:'center',sz:13}); merge(0,0,0,9);
+    [['Semana',semStr],['Empresa','Transportes López'],['Ruta',zona+' '+hora.replace(':','')+'h'],['Motorista',''],['Vehículo','']].forEach(([l,v],i)=>{
+      setCel(i+1,0,l,{bold:true,bg:AZUL_C,color:'FF1F4E79',border:true}); merge(i+1,0,i+1,2);
+      setCel(i+1,3,v,{bold:l==='Ruta',border:true,bg:l==='Motorista'||l==='Vehículo'?'FFFFFF00':BLANCO}); merge(i+1,3,i+1,9);
+    });
+    ['N°','Nombre Completo','Dirección Exacta','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].forEach((h,c)=>setCel(6,c,h,{bold:true,bg:AZUL_M,color:BLANCO,align:'center',border:true}));
+    empleados.forEach((e,i)=>{
+      const r=7+i,rf=i%2===0?BLANCO:GRIS;
+      setCel(r,0,i+1,{align:'center',border:true,bg:rf});
+      setCel(r,1,e.nombre,{border:true,bg:rf});
+      setCel(r,2,e.direccion,{border:true,bg:rf,wrap:true});
+      DIAS.forEach((d,di)=>setCel(r,3+di,'',{bg:e.dias[d]?BLANCO:NEGRO_OFF,border:true,align:'center'}));
+    });
+    const hcR=7+empleados.length+1;
+    setCel(hcR,0,'Headcount por día (mín. 3)',{bold:true,bg:AZUL_H,color:BLANCO,align:'center',border:true}); merge(hcR,0,hcR,2);
+    DIAS.forEach((d,di)=>{
+      const cnt=empleados.filter(e=>e.dias[d]).length;
+      const bg=cnt===0?GRIS:cnt>=3?'FFC6EFCE':'FFFFC7CE';
+      const color=cnt===0?'FF9E9E9E':cnt>=3?'FF276221':'FF9C0006';
+      setCel(hcR,3+di,cnt,{bold:true,align:'center',border:true,bg,color});
+    });
+    ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:hcR+2,c:9}});
+    ws['!cols']=[{wch:5},{wch:28},{wch:36},{wch:9},{wch:9},{wch:11},{wch:9},{wch:9},{wch:9},{wch:9}];
+    XLSX.utils.book_append_sheet(wb,ws,sn);
+  });
+  const wsR=XLSX.utils.aoa_to_sheet([['RESUMEN — '+semStr],[],['Nombre','Cuenta','Municipio','Ruta','Lun','Mar','Mié','Jue','Vie','Sáb','Dom','Total'],...emp.map(e=>[e.nombre,e.cuenta,e.municipio,(MUNICIPIO_ZONA[e.municipio]||e.municipio)+' '+e.hora,...DIAS.map(d=>e.dias[d]?'X':''),DIAS.filter(d=>e.dias[d]).length])]);
+  XLSX.utils.book_append_sheet(wb,wsR,'RESUMEN');
+  const s=state.semanaFecha?fmtFecha(state.semanaFecha).replace(/\//g,'-'):'semana';
+  XLSX.writeFile(wb,`Rutas_Transporte_${s}.xlsx`);
+  toast('Excel descargado');
+  limpiarHistorialAuto();
+}
+async function limpiarHistorialAuto(){
+  if((state.empleadosSemana||[]).length>0&&state.semanaFecha){
+    if(!state.historial) state.historial=[];
+    const yaExiste=state.historial.some(h=>h.semana===fmtSemana());
+    if(!yaExiste){
+      state.historial.unshift({semana:fmtSemana(),fecha:new Date(state.semanaFecha).toISOString(),empleados:[...state.empleadosSemana],totalEmpleados:state.empleadosSemana.length,totalViajes:state.empleadosSemana.reduce((s,e)=>s+DIAS.filter(d=>e.dias[d]).length,0),limpiadoPor:currentUser?.name||''});
+      await guardarEnOneDrive();
+    }
+  }
+}
+function exportarHistorialExcel(idx){
+  const h=(state.historial||[])[idx];if(!h)return;
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([['HISTORIAL — '+h.semana],[],['Nombre','Cuenta','Municipio','Hora','Lun','Mar','Mié','Jue','Vie','Sáb','Dom','Total','Agregado por'],...(h.empleados||[]).map(e=>[e.nombre,e.cuenta,e.municipio,e.hora,...DIAS.map(d=>e.dias[d]?'X':''),DIAS.filter(d=>e.dias[d]).length,e.agregadoPor||''])]);
+  XLSX.utils.book_append_sheet(wb,ws,'Historial');
+  XLSX.writeFile(wb,`Historial_${h.semana.replace(/[/\s—]+/g,'_')}.xlsx`);
+  toast('Excel del historial descargado');
+}
+
+// ══ NAV ══
+function nav(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  if(page==='semana') renderSemana();
+  if(page==='base') renderBase();
+  if(page==='historial') renderHistorial();
+  if(page==='empleados'){renderCalendario();cargarListaEmpleados();}
+}
+
+// ══ TOAST ══
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+type;
+  setTimeout(()=>t.className='',3000);
+}
+
+// ══ AUTO LOGIN ══
+window.onload=async()=>{
+  await msalInstance.initialize();
+  const accounts=msalInstance.getAllAccounts();
+  if(accounts.length>0) await initApp(accounts[0]);
+};
+</script>
+</body>
+</html>
